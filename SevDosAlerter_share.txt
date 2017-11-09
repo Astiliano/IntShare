@@ -1,0 +1,118 @@
+' _______ _______ _    _     ______   _____  _______      _______        _______  ______ _______ _______  ______        '
+' |______ |______  \  /  ___ |     \ |     | |______      |_____| |      |______ |_____/    |    |______ |_____/        '
+' ______| |______   \/       |_____/ |_____| ______|      |     | |_____ |______ |    \_    |    |______ |    \_        '
+' By @                                                                                                           '
+' Edited 6/1/2015                                                                                                       '
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' DOWN BELOW, in the first Sub you will find - team = "page-#######" - insert your oncall team there, it is the same as the link
+' #######
+' So in this case we took "#######" because it shows an alias, if your team does not do alias per oncall shift this will not work
+' EXAMPLE, THIS ONPAGE TEAM WILL NOT WORK #######
+
+Public pos As Integer
+Public result As String
+
+' Part of this from http://tinyurl.com/nrs5n3h
+' Declare for call to mpr.dll.
+   Declare Function WNetGetUser Lib "mpr.dll" _
+      Alias "WNetGetUserA" (ByVal lpName As String, _
+      ByVal lpUserName As String, lpnLength As Long) As Long
+
+   Const NoError = 0       'The Function call was successful
+
+Sub GetUserName()
+Dim team As String
+' Dim result As String - Moved to public
+Dim myURL As String
+' Dim pos As Integer - Moved to public
+Dim winHttpReq As Object
+Set winHttpReq = CreateObject("WinHttp.WinHttpRequest.5.1")
+
+team = "#######"
+
+myURL = "#######" & team & "&details=oncall"
+winHttpReq.Open "GET", myURL, False
+winHttpReq.Send
+      
+      ' Buffer size for the return string.
+      Const lpnLength As Integer = 255
+
+      ' Get return buffer space.
+      Dim status As Integer
+
+      ' For getting user information.
+      Dim lpName, lpUserName As String
+
+      ' Assign the buffer size constant to lpUserName.
+      lpUserName = Space$(lpnLength + 1)
+
+      ' Get the log-on name of the person using product.
+      status = WNetGetUser(lpName, lpUserName, lpnLength)
+
+      ' See whether error occurred.
+      If status = NoError Then
+         ' This line removes the null character. Strings in C are null-
+         ' terminated. Strings in Visual Basic are not null-terminated.
+         ' The null character must be removed from the C strings to be used
+         ' cleanly in Visual Basic.
+         lpUserName = Left$(lpUserName, InStr(lpUserName, Chr(0)) - 1)
+      Else
+
+         ' An error occurred.
+         MsgBox "Unable to get the name."
+         End
+      End If
+
+      ' Display the name of the person logged on to the machine.
+      ' MsgBox "The person logged on this machine is: " & lpUserName
+
+result = winHttpReq.responseText
+pos = InStr(result, lpUserName)
+'pos = InStr(result, "braddenn")
+   End Sub
+
+Public Sub Check_For_Ticket(MyMail As MailItem)
+     On Error GoTo Proc_Error
+Dim strTicket, strSubject As String
+Call GetUserName
+If pos > 0 Then
+    MsgBox "POS results:" & pos & "means you're in"
+     ' Default value in ticket # is not found in the subject line
+     strTicket = "None"
+    
+     ' Grab the subject from the message
+     strSubject = MyMail.Subject
+         
+     If Left(strSubject, 6) = "Ticket" Then
+    ' Get only Ticket #
+        strTicket = Mid(strSubject, 8, 11)
+        'MsgBox "Your Ticket # is: " & strTicket
+        Call OpenInFireFoxNewTab("http://tt.amazon.com/" & strTicket)
+    End If
+
+Proc_Done:
+     Exit Sub
+    
+Proc_Error:
+     MsgBox "An error has occured in Check_For_Ticket. Error #" & Err & " - " & Err.Description
+     GoTo Proc_Done
+ End If
+ 'MsgBox "POS results:" & pos & " - means you're not in"
+ End Sub
+
+
+Sub OpenInFireFoxNewTab(url)
+  Dim pathFireFox As String
+  pathFireFox = "C:\Program Files (x86)\Mozilla Firefox\firefox.exe"
+  If Dir(pathFireFox) = "" Then pathFireFox = "C:\Program Files\Mozilla Firefox\firefox.exe"
+  If Dir(pathFireFox) = "" Then
+    MsgBox "FireFox Path Not Found", vbCritical, "Macro Ending"
+    Exit Sub
+  End If
+  Shell """" & pathFireFox & """" & " -new-tab " & url, vbHide
+End Sub
+
+Sub testing()
+Call GetUserName
+MsgBox pos
+End Sub
